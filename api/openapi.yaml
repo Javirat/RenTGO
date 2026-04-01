@@ -1,0 +1,514 @@
+openapi: 3.0.3
+info:
+  title: RenTGO - My Rent Platform API
+  description: Property rental platform backend API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        phone:
+          type: string
+          example: "+998901234567"
+        role:
+          type: string
+          enum: [renter, landlord]
+        language:
+          type: string
+          enum: [uz, ru, en]
+        full_name:
+          type: string
+        avatar_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Property:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: double
+        rooms:
+          type: integer
+        capacity:
+          type: integer
+        region:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+        category:
+          type: string
+          enum: [house, car]
+        has_cctv:
+          type: boolean
+        views_count:
+          type: integer
+        is_active:
+          type: boolean
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Image:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        property_id:
+          type: string
+          format: uuid
+        minio_url:
+          type: string
+        is_primary:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+paths:
+  /auth/send-otp:
+    post:
+      tags: [Auth]
+      summary: Send OTP to phone number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+                  example: "+998901234567"
+      responses:
+        '200':
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/verify-otp:
+    post:
+      tags: [Auth]
+      summary: Verify OTP and receive JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code]
+              properties:
+                phone:
+                  type: string
+                  example: "+998901234567"
+                code:
+                  type: string
+                  example: "12345"
+                role:
+                  type: string
+                  enum: [renter, landlord]
+                  default: renter
+                language:
+                  type: string
+                  enum: [uz, ru, en]
+                  default: uz
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  is_new:
+                    type: boolean
+        '400':
+          description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/profile:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+    put:
+      tags: [Auth]
+      summary: Update user profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                avatar_url:
+                  type: string
+                language:
+                  type: string
+                  enum: [uz, ru, en]
+                role:
+                  type: string
+                  enum: [renter, landlord]
+      responses:
+        '200':
+          description: Profile updated
+        '401':
+          description: Unauthorized
+
+  /properties:
+    get:
+      tags: [Properties]
+      summary: List properties with filters
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [house, car]
+        - name: region
+          in: query
+          schema:
+            type: string
+        - name: min_price
+          in: query
+          schema:
+            type: number
+        - name: max_price
+          in: query
+          schema:
+            type: number
+        - name: rooms
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated property list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Property'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+    post:
+      tags: [Properties]
+      summary: Create a new property listing
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, price, category]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                rooms:
+                  type: integer
+                capacity:
+                  type: integer
+                region:
+                  type: string
+                address:
+                  type: string
+                lat:
+                  type: number
+                lng:
+                  type: number
+                category:
+                  type: string
+                  enum: [house, car]
+                has_cctv:
+                  type: boolean
+      responses:
+        '201':
+          description: Property created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+        '403':
+          description: Only landlords can create listings
+
+  /properties/my:
+    get:
+      tags: [Properties]
+      summary: List current user's properties
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User's properties
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Property'
+
+  /properties/upload-url:
+    get:
+      tags: [Properties]
+      summary: Get pre-signed upload URL for MinIO
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: filename
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pre-signed URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upload_url:
+                    type: string
+
+  /properties/{id}:
+    get:
+      tags: [Properties]
+      summary: Get property details by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Property details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+        '404':
+          description: Not found
+    put:
+      tags: [Properties]
+      summary: Update a property
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                rooms:
+                  type: integer
+                capacity:
+                  type: integer
+                region:
+                  type: string
+                address:
+                  type: string
+                lat:
+                  type: number
+                lng:
+                  type: number
+                category:
+                  type: string
+                has_cctv:
+                  type: boolean
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Properties]
+      summary: Delete a property
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deleted
+
+  /properties/{id}/images:
+    post:
+      tags: [Properties]
+      summary: Upload image for a property
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                is_primary:
+                  type: boolean
+      responses:
+        '201':
+          description: Image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Image'
+
+  /properties/{id}/images/{imageId}:
+    delete:
+      tags: [Properties]
+      summary: Delete a property image
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Image deleted

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod:*)",
+      "Bash(go build:*)",
+      "Bash(flutter --version)",
+      "Bash(flutter create:*)",
+      "Bash(flutter pub:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter devices:*)",
+      "Bash(flutter emulators:*)",
+      "Bash(adb wait-for-device:*)",
+      "Bash(adb shell:*)",
+      "Bash(export PATH=\"$PATH:/home/mh/Android/Sdk/platform-tools\")",
+      "Bash(adb devices:*)",
+      "Bash(flutter run:*)",
+      "Bash(docker --version)",
+      "Bash(docker compose:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker volume:*)",
+      "Bash(docker ps:*)",
+      "Bash(curl:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
