@@ -52,6 +52,7 @@ class AppLocalizations {
       'no': 'Yo\'q',
       'per_month': '/oy',
       'people': 'kishi',
+      'telegram_hint_title': 'Kod Telegram orqali keladi. Avval botga yozing:',
     },
     'ru': {
       'app_name': 'RenTGO',
@@ -102,6 +103,7 @@ class AppLocalizations {
       'no': 'Нет',
       'per_month': '/мес',
       'people': 'чел.',
+      'telegram_hint_title': 'Код придёт в Telegram. Сначала напишите боту:',
     },
     'en': {
       'app_name': 'RenTGO',
@@ -152,6 +154,7 @@ class AppLocalizations {
       'no': 'No',
       'per_month': '/mo',
       'people': 'people',
+      'telegram_hint_title': 'Code will be sent via Telegram. First message the bot:',
     },
   };
 

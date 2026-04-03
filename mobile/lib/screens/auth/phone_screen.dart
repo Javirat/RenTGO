@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import 'otp_screen.dart';
@@ -88,6 +89,47 @@ class _PhoneScreenState extends State<PhoneScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
                   : Text(l.t('send_otp')),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3F2FD),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF2196F3).withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.telegram, color: Color(0xFF2196F3), size: 32),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.t('telegram_hint_title'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: () => launchUrl(
+                            Uri.parse('https://t.me/RentGO_appbot'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          child: Text(
+                            '@RentGO_appbot',
+                            style: const TextStyle(
+                              color: Color(0xFF2196F3),
+                              decoration: TextDecoration.underline,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

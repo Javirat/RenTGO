@@ -15,10 +15,12 @@ type AuthService struct {
 	userRepo *repository.UserRepository
 	otp      *OTPService
 	jwt      *JWTService
+	sms      *SMSService
+	telegram *TelegramService
 }
 
-func NewAuthService(repo *repository.UserRepository, otp *OTPService, jwt *JWTService) *AuthService {
-	return &AuthService{userRepo: repo, otp: otp, jwt: jwt}
+func NewAuthService(repo *repository.UserRepository, otp *OTPService, jwt *JWTService, sms *SMSService, tg *TelegramService) *AuthService {
+	return &AuthService{userRepo: repo, otp: otp, jwt: jwt, sms: sms, telegram: tg}
 }
 
 func (s *AuthService) SendOTP(ctx context.Context, phone string) (string, error) {
@@ -31,9 +33,30 @@ func (s *AuthService) SendOTP(ctx context.Context, phone string) (string, error)
 		return "", err
 	}
 
-	// In production, integrate a real SMS gateway here.
-	// For development, log the OTP.
-	log.Printf("[OTP] Phone: %s, Code: %s", phone, code)
+	sent := false
+
+	// Try Telegram first (free)
+	if s.telegram != nil && s.telegram.IsConfigured() {
+		if err := s.telegram.SendOTP(phone, code); err != nil {
+			log.Printf("[TG] failed to send OTP to %s: %v", phone, err)
+		} else {
+			sent = true
+		}
+	}
+
+	// Fallback to SMS if Telegram didn't work
+	if !sent && s.sms != nil && s.sms.IsConfigured() {
+		message := fmt.Sprintf("RenTGO: Sizning tasdiqlash kodingiz: %s", code)
+		if err := s.sms.Send(phone, message); err != nil {
+			log.Printf("[SMS] failed to send OTP to %s: %v", phone, err)
+		} else {
+			sent = true
+		}
+	}
+
+	if !sent {
+		log.Printf("[OTP] Phone: %s, Code: %s (no delivery channel available)", phone, code)
+	}
 
 	return code, s.otp.SetCooldown(ctx, phone)
 }

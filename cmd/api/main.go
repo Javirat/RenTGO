@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -45,7 +46,15 @@ func main() {
 	userRepo := authRepo.NewUserRepository(db)
 	otpSvc := authService.NewOTPService(rdb, cfg.OTP)
 	jwtSvc := authService.NewJWTService(cfg.JWT)
-	authSvc := authService.NewAuthService(userRepo, otpSvc, jwtSvc)
+	smsSvc := authService.NewSMSService(authService.EskizConfig{
+		Email:    cfg.Eskiz.Email,
+		Password: cfg.Eskiz.Password,
+	})
+	tgSvc := authService.NewTelegramService(cfg.Telegram.BotToken, rdb)
+	authSvc := authService.NewAuthService(userRepo, otpSvc, jwtSvc, smsSvc, tgSvc)
+
+	// Start Telegram bot polling in background
+	go tgSvc.StartPolling(context.Background())
 	authH := authHandler.NewAuthHandler(authSvc)
 
 	// Property wiring

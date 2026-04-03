@@ -13,6 +13,17 @@ type Config struct {
 	MinIO    MinIOConfig
 	JWT      JWTConfig
 	OTP      OTPConfig
+	Eskiz    EskizConfig
+	Telegram TelegramConfig
+}
+
+type EskizConfig struct {
+	Email    string
+	Password string
+}
+
+type TelegramConfig struct {
+	BotToken string
 }
 
 type AppConfig struct {
@@ -95,6 +106,13 @@ func Load() *Config {
 		OTP: OTPConfig{
 			Length: getEnvInt("OTP_LENGTH", 5),
 			Expiry: time.Duration(getEnvInt("OTP_EXPIRY_SECONDS", 300)) * time.Second,
+		},
+		Eskiz: EskizConfig{
+			Email:    getEnv("ESKIZ_EMAIL", ""),
+			Password: getEnv("ESKIZ_PASSWORD", ""),
+		},
+		Telegram: TelegramConfig{
+			BotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
 		},
 	}
 }
