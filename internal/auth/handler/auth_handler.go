@@ -176,5 +176,12 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "profile updated"})
+	// Return new token so role change takes effect immediately
+	token, err := h.authSvc.GenerateToken(user)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "profile updated"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "profile updated", "token": token})
 }

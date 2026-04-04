@@ -12,6 +12,8 @@ const (
 type Property struct {
 	ID          string    `json:"id"`
 	OwnerID     string    `json:"owner_id"`
+	OwnerName   string    `json:"owner_name,omitempty"`
+	OwnerPhone  string    `json:"owner_phone,omitempty"`
 	Title       string    `json:"title"`
 	Description string    `json:"description,omitempty"`
 	Price       float64   `json:"price"`

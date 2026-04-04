@@ -7,6 +7,8 @@ import '../../providers/theme_provider.dart';
 import '../property/property_detail_screen.dart';
 import '../property/create_property_screen.dart';
 import '../profile/profile_screen.dart';
+import '../statistics/statistics_screen.dart';
+import '../messages/messages_screen.dart';
 import '../../widgets/property_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -107,7 +109,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(Icons.bar_chart),
               title: Text(l.t('statistics')),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const StatisticsScreen()));
+              },
             ),
             if (isLandlord)
               ListTile(
@@ -121,7 +126,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(Icons.message_outlined),
               title: Text(l.t('messages')),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const MessagesScreen()));
+              },
             ),
             ListTile(
               leading: const Icon(Icons.person_outline),

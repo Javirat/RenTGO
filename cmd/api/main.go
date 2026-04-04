@@ -10,6 +10,9 @@ import (
 	authHandler "github.com/MuhammadYahyo/RenTGO/internal/auth/handler"
 	authRepo "github.com/MuhammadYahyo/RenTGO/internal/auth/repository"
 	authService "github.com/MuhammadYahyo/RenTGO/internal/auth/service"
+	chatHandlerPkg "github.com/MuhammadYahyo/RenTGO/internal/chat/handler"
+	chatRepo "github.com/MuhammadYahyo/RenTGO/internal/chat/repository"
+	chatService "github.com/MuhammadYahyo/RenTGO/internal/chat/service"
 	propHandler "github.com/MuhammadYahyo/RenTGO/internal/property/handler"
 	propRepo "github.com/MuhammadYahyo/RenTGO/internal/property/repository"
 	propService "github.com/MuhammadYahyo/RenTGO/internal/property/service"
@@ -62,6 +65,11 @@ func main() {
 	propertySvc := propService.NewPropertyService(propertyRepo)
 	propertyH := propHandler.NewPropertyHandler(propertySvc, storageSvc)
 
+	// Chat wiring
+	chatRepository := chatRepo.NewChatRepository(db)
+	chatSvc := chatService.NewChatService(chatRepository)
+	chatH := chatHandlerPkg.NewChatHandler(chatSvc)
+
 	// Router
 	r := gin.Default()
 	r.Use(auth.LanguageMiddleware())
@@ -104,6 +112,16 @@ func main() {
 		propProtected.POST("/:id/images", propertyH.UploadImage)
 		propProtected.DELETE("/:id/images/:imageId", propertyH.DeleteImage)
 		propProtected.GET("/upload-url", propertyH.GetUploadURL)
+	}
+
+	// Chat routes (protected)
+	chatProtected := r.Group("/api/v1/chat")
+	chatProtected.Use(auth.JWTMiddleware(jwtSvc))
+	{
+		chatProtected.POST("/conversations", chatH.StartConversation)
+		chatProtected.GET("/conversations", chatH.ListConversations)
+		chatProtected.POST("/conversations/:id/messages", chatH.SendMessage)
+		chatProtected.GET("/conversations/:id/messages", chatH.GetMessages)
 	}
 
 	log.Printf("RenTGO API starting on :%s", cfg.App.Port)

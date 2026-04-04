@@ -44,7 +44,33 @@ CREATE TABLE IF NOT EXISTS images (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Conversations table
+CREATE TABLE IF NOT EXISTS conversations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    renter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    landlord_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(property_id, renter_id)
+);
+
+-- Messages table
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes
+CREATE INDEX idx_conversations_renter ON conversations(renter_id);
+CREATE INDEX idx_conversations_landlord ON conversations(landlord_id);
+CREATE INDEX idx_conversations_last_msg ON conversations(last_message_at DESC);
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX idx_messages_created ON messages(conversation_id, created_at);
 CREATE INDEX idx_properties_owner ON properties(owner_id);
 CREATE INDEX idx_properties_region ON properties(region);
 CREATE INDEX idx_properties_category ON properties(category);

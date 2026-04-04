@@ -84,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // Language selector
             DropdownButtonFormField<String>(
-              initialValue: auth.language,
+              value: auth.language,
               decoration: InputDecoration(
                 labelText: l.t('select_language'),
                 prefixIcon: const Icon(Icons.language),
@@ -100,26 +100,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Role display
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
+            // Role selector
+            DropdownButtonFormField<String>(
+              value: user?.role ?? 'renter',
+              decoration: InputDecoration(
+                labelText: l.t('select_role'),
+                prefixIcon: Icon(
+                  user?.isLandlord == true ? Icons.home_work : Icons.person_search,
+                  color: const Color(0xFF2563EB),
+                ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    user?.isLandlord == true ? Icons.home_work : Icons.person_search,
-                    color: const Color(0xFF2563EB),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    user?.isLandlord == true ? l.t('landlord') : l.t('renter'),
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ],
-              ),
+              items: [
+                DropdownMenuItem(value: 'renter', child: Text(l.t('renter'))),
+                DropdownMenuItem(value: 'landlord', child: Text(l.t('landlord'))),
+              ],
+              onChanged: (v) {
+                if (v != null) {
+                  auth.updateProfile(role: v);
+                }
+              },
             ),
             const SizedBox(height: 32),
 

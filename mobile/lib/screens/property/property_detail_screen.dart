@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/property.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/chat_provider.dart';
 import '../../providers/property_provider.dart';
+import '../messages/chat_screen.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final String propertyId;
@@ -169,15 +173,110 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.phone),
-            label: Text(auth.language == 'uz'
-                ? 'Bog\'lanish'
-                : auth.language == 'ru'
-                    ? 'Связаться'
-                    : 'Contact'),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showContactDialog(context, p, l),
+                  icon: const Icon(Icons.phone),
+                  label: Text(l.t('contact')),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _startChat(context, p, l),
+                  icon: const Icon(Icons.message),
+                  label: Text(l.t('write_message')),
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startChat(BuildContext context, Property p, AppLocalizations l) async {
+    try {
+      final chatProvider = context.read<ChatProvider>();
+      final conv = await chatProvider.startConversation(p.id, p.ownerId);
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              conversationId: conv.id,
+              otherName: p.ownerName.isNotEmpty ? p.ownerName : p.ownerPhone,
+              propertyTitle: p.title,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showContactDialog(BuildContext context, Property p, AppLocalizations l) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 32,
+              backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.1),
+              child: Text(
+                p.ownerName.isNotEmpty ? p.ownerName[0].toUpperCase() : '?',
+                style: const TextStyle(fontSize: 24, color: Color(0xFF2563EB)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (p.ownerName.isNotEmpty)
+              Text(p.ownerName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            if (p.ownerPhone.isNotEmpty)
+              Text(p.ownerPhone, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      launchUrl(Uri.parse('tel:${p.ownerPhone}'));
+                    },
+                    icon: const Icon(Icons.phone),
+                    label: Text(l.t('call')),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: p.ownerPhone));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l.t('copied'))),
+                      );
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.copy),
+                    label: Text(l.t('copy')),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );

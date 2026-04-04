@@ -4,7 +4,7 @@ import '../models/user.dart';
 import '../models/property.dart';
 
 class ApiClient {
-  static const String _baseUrl = 'http://10.0.2.2:8080/api/v1'; // Android emulator -> host
+  static const String _baseUrl = 'http://152.70.18.164:8080/api/v1';
   late final Dio _dio;
 
   ApiClient() {
@@ -57,7 +57,7 @@ class ApiClient {
     return User.fromJson(res.data);
   }
 
-  Future<void> updateProfile({
+  Future<String?> updateProfile({
     String? fullName,
     String? language,
     String? role,
@@ -66,7 +66,8 @@ class ApiClient {
     if (fullName != null) data['full_name'] = fullName;
     if (language != null) data['language'] = language;
     if (role != null) data['role'] = role;
-    await _dio.put('/auth/profile', data: data);
+    final res = await _dio.put('/auth/profile', data: data);
+    return res.data['token'];
   }
 
   // ── Properties ──
@@ -128,5 +129,34 @@ class ApiClient {
 
   Future<void> deleteImage(String propertyId, String imageId) async {
     await _dio.delete('/properties/$propertyId/images/$imageId');
+  }
+
+  // ── Chat ──
+
+  Future<Map<String, dynamic>> startConversation(String propertyId, String landlordId) async {
+    final res = await _dio.post('/chat/conversations', data: {
+      'property_id': propertyId,
+      'landlord_id': landlordId,
+    });
+    return res.data;
+  }
+
+  Future<List<dynamic>> listConversations() async {
+    final res = await _dio.get('/chat/conversations');
+    return res.data as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> sendMessage(String conversationId, String text) async {
+    final res = await _dio.post('/chat/conversations/$conversationId/messages', data: {
+      'text': text,
+    });
+    return res.data;
+  }
+
+  Future<List<dynamic>> getMessages(String conversationId, {int page = 1}) async {
+    final res = await _dio.get('/chat/conversations/$conversationId/messages', queryParameters: {
+      'page': page,
+    });
+    return res.data as List<dynamic>;
   }
 }

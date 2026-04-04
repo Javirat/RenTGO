@@ -24,6 +24,8 @@ class PropertyImage {
 class Property {
   final String id;
   final String ownerId;
+  final String ownerName;
+  final String ownerPhone;
   final String title;
   final String description;
   final double price;
@@ -43,6 +45,8 @@ class Property {
   Property({
     required this.id,
     required this.ownerId,
+    this.ownerName = '',
+    this.ownerPhone = '',
     required this.title,
     this.description = '',
     required this.price,
@@ -64,6 +68,8 @@ class Property {
     return Property(
       id: json['id'] ?? '',
       ownerId: json['owner_id'] ?? '',
+      ownerName: json['owner_name'] ?? '',
+      ownerPhone: json['owner_phone'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       price: (json['price'] ?? 0).toDouble(),

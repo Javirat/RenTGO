@@ -99,3 +99,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID string) (*models.Us
 func (s *AuthService) UpdateProfile(ctx context.Context, user *models.User) error {
 	return s.userRepo.Update(ctx, user)
 }
+
+func (s *AuthService) GenerateToken(user *models.User) (string, error) {
+	return s.jwt.GenerateToken(user)
+}

@@ -1,9 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/property_provider.dart';
+
+class _ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final digits = newValue.text.replaceAll(' ', '');
+    if (digits.isEmpty) return newValue.copyWith(text: '');
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(' ');
+      buffer.write(digits[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
 
 class CreatePropertyScreen extends StatefulWidget {
   const CreatePropertyScreen({super.key});
@@ -55,20 +74,32 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final auth = context.read<AuthProvider>();
+    final l = AppLocalizations(auth.language);
+    if (auth.user?.role != 'landlord') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.t('only_landlord')), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       final pp = context.read<PropertyProvider>();
-      final property = await pp.createProperty({
+      final data = <String, dynamic>{
         'title': _titleCtrl.text.trim(),
         'description': _descCtrl.text.trim(),
-        'price': double.tryParse(_priceCtrl.text) ?? 0,
-        'rooms': int.tryParse(_roomsCtrl.text) ?? 0,
-        'capacity': int.tryParse(_capacityCtrl.text) ?? 0,
+        'price': double.tryParse(_priceCtrl.text.replaceAll(' ', '')) ?? 0,
         'region': _region,
         'address': _addressCtrl.text.trim(),
         'category': _category,
         'has_cctv': _hasCctv,
-      });
+      };
+      if (_category == 'house') {
+        data['rooms'] = int.tryParse(_roomsCtrl.text) ?? 0;
+        data['capacity'] = int.tryParse(_capacityCtrl.text) ?? 0;
+      }
+      final property = await pp.createProperty(data);
 
       // Upload images
       for (int i = 0; i < _images.length; i++) {
@@ -211,35 +242,41 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
                 controller: _priceCtrl,
                 decoration: InputDecoration(labelText: '${l.t('price')} (UZS)', prefixIcon: const Icon(Icons.attach_money)),
                 keyboardType: TextInputType.number,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  _ThousandsSeparatorInputFormatter(),
+                ],
+                validator: (v) => (v == null || v.replaceAll(' ', '').isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 12),
 
-              // Rooms & Capacity
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _roomsCtrl,
-                      decoration: InputDecoration(labelText: l.t('rooms')),
-                      keyboardType: TextInputType.number,
+              // Rooms & Capacity (only for houses)
+              if (_category == 'house') ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _roomsCtrl,
+                        decoration: InputDecoration(labelText: l.t('rooms')),
+                        keyboardType: TextInputType.number,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _capacityCtrl,
-                      decoration: InputDecoration(labelText: l.t('capacity')),
-                      keyboardType: TextInputType.number,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _capacityCtrl,
+                        decoration: InputDecoration(labelText: l.t('capacity')),
+                        keyboardType: TextInputType.number,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
 
               // Region
               DropdownButtonFormField<String>(
-                initialValue: _region,
+                value: _region,
                 decoration: InputDecoration(labelText: l.t('region')),
                 items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                 onChanged: (v) => setState(() => _region = v ?? 'Chilonzor'),

@@ -87,7 +87,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> updateProfile({String? fullName, String? role}) async {
-    await _api.updateProfile(fullName: fullName, language: _language, role: role);
+    final newToken = await _api.updateProfile(fullName: fullName, language: _language, role: role);
+    if (newToken != null) {
+      _token = newToken;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', _token!);
+    }
     await refreshProfile();
   }
 

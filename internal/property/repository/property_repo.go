@@ -32,11 +32,13 @@ func (r *PropertyRepository) Create(ctx context.Context, p *models.Property) err
 func (r *PropertyRepository) GetByID(ctx context.Context, id string) (*models.Property, error) {
 	var p models.Property
 	err := r.db.QueryRow(ctx,
-		`SELECT id, owner_id, title, COALESCE(description,''), price, COALESCE(rooms,0), COALESCE(capacity,0),
-		        COALESCE(region,''), COALESCE(address,''), COALESCE(lat,0), COALESCE(lng,0),
-		        category, has_cctv, views_count, is_active, created_at, updated_at
-		 FROM properties WHERE id = $1`, id).
-		Scan(&p.ID, &p.OwnerID, &p.Title, &p.Description, &p.Price, &p.Rooms, &p.Capacity,
+		`SELECT p.id, p.owner_id, COALESCE(u.full_name,''), COALESCE(u.phone,''),
+		        p.title, COALESCE(p.description,''), p.price, COALESCE(p.rooms,0), COALESCE(p.capacity,0),
+		        COALESCE(p.region,''), COALESCE(p.address,''), COALESCE(p.lat,0), COALESCE(p.lng,0),
+		        p.category, p.has_cctv, p.views_count, p.is_active, p.created_at, p.updated_at
+		 FROM properties p LEFT JOIN users u ON u.id = p.owner_id WHERE p.id = $1`, id).
+		Scan(&p.ID, &p.OwnerID, &p.OwnerName, &p.OwnerPhone,
+			&p.Title, &p.Description, &p.Price, &p.Rooms, &p.Capacity,
 			&p.Region, &p.Address, &p.Lat, &p.Lng, &p.Category, &p.HasCCTV,
 			&p.ViewsCount, &p.IsActive, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
