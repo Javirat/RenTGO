@@ -1,4 +1,6 @@
 class PropertyImage {
+  static const String _baseUrl = 'http://152.70.18.164:8080/images';
+
   final String id;
   final String propertyId;
   final String minioUrl;
@@ -10,6 +12,12 @@ class PropertyImage {
     required this.minioUrl,
     this.isPrimary = false,
   });
+
+  /// Full URL accessible from the phone
+  String get fullUrl {
+    if (minioUrl.startsWith('http')) return minioUrl;
+    return '$_baseUrl$minioUrl';
+  }
 
   factory PropertyImage.fromJson(Map<String, dynamic> json) {
     return PropertyImage(
@@ -93,6 +101,6 @@ class Property {
 
   String? get primaryImageUrl {
     final primary = images.where((i) => i.isPrimary).firstOrNull;
-    return primary?.minioUrl ?? images.firstOrNull?.minioUrl;
+    return primary?.fullUrl ?? images.firstOrNull?.fullUrl;
   }
 }

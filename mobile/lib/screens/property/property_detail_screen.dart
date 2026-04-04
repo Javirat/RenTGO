@@ -74,7 +74,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       itemCount: p.images.length,
                       onPageChanged: (i) => setState(() => _currentImage = i),
                       itemBuilder: (_, i) => Image.network(
-                        p.images[i].minioUrl,
+                        p.images[i].fullUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _imagePlaceholder(p),
                       ),

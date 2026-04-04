@@ -94,6 +94,9 @@ func main() {
 		authProtected.PUT("/profile", authH.UpdateProfile)
 	}
 
+	// Image proxy (public)
+	r.GET("/images/*path", propertyH.ServeImage)
+
 	// Property routes (public)
 	propPublic := r.Group("/api/v1/properties")
 	{

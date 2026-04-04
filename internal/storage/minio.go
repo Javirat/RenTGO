@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -88,4 +89,23 @@ func (s *StorageService) GetPresignedDownloadURL(ctx context.Context, objectName
 
 func (s *StorageService) Delete(ctx context.Context, objectName string) error {
 	return s.client.RemoveObject(ctx, s.bucket, objectName, minio.RemoveObjectOptions{})
+}
+
+func (s *StorageService) GetObject(ctx context.Context, objectPath string) (io.ReadCloser, string, error) {
+	// objectPath is like /bucket/objectName — strip the leading /bucket/
+	prefix := "/" + s.bucket + "/"
+	objectName := strings.TrimPrefix(objectPath, prefix)
+
+	obj, err := s.client.GetObject(ctx, s.bucket, objectName, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, "", fmt.Errorf("get object: %w", err)
+	}
+
+	stat, err := obj.Stat()
+	if err != nil {
+		obj.Close()
+		return nil, "", fmt.Errorf("stat object: %w", err)
+	}
+
+	return obj, stat.ContentType, nil
 }

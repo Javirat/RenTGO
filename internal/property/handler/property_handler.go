@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -323,4 +325,36 @@ func (h *PropertyHandler) GetUploadURL(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"upload_url": url})
+}
+
+// ServeImage serves an image from MinIO storage
+// GET /images/*path
+func (h *PropertyHandler) ServeImage(c *gin.Context) {
+	path := c.Param("path")
+	if path == "" || h.storageSvc == nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	reader, contentType, err := h.storageSvc.GetObject(c.Request.Context(), path)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	defer reader.Close()
+
+	if contentType == "" {
+		if strings.HasSuffix(path, ".jpg") || strings.HasSuffix(path, ".jpeg") {
+			contentType = "image/jpeg"
+		} else if strings.HasSuffix(path, ".png") {
+			contentType = "image/png"
+		} else {
+			contentType = "application/octet-stream"
+		}
+	}
+
+	c.Header("Content-Type", contentType)
+	c.Header("Cache-Control", "public, max-age=86400")
+	c.Status(http.StatusOK)
+	io.Copy(c.Writer, reader)
 }
