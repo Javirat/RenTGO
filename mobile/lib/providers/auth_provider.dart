@@ -1,10 +1,13 @@
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
 import '../models/user.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiClient _api = ApiClient();
+
   User? _user;
   String? _token;
   bool _loading = false;
@@ -16,6 +19,9 @@ class AuthProvider extends ChangeNotifier {
   bool get loading => _loading;
   String get language => _language;
 
+  String? _devOtpCode;
+  String? get devOtpCode => _devOtpCode;
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('token');
@@ -23,6 +29,12 @@ class AuthProvider extends ChangeNotifier {
     if (_token != null) {
       try {
         _user = await _api.getProfile();
+        final newToken = await _api.updateProfile(language: _language);
+        if (newToken != null) {
+          _token = newToken;
+          await prefs.setString('token', _token!);
+        }
+        _setupFcm();
       } catch (_) {
         _token = null;
         await prefs.remove('token');
@@ -31,15 +43,30 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _setupFcm() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
+      final fcmToken = await messaging.getToken();
+      if (fcmToken != null) {
+        await _api.registerFcmToken(fcmToken);
+        dev.log('[FCM] Token registered: ${fcmToken.substring(0, 20)}...');
+      }
+      // Re-register on token refresh
+      messaging.onTokenRefresh.listen((newToken) {
+        _api.registerFcmToken(newToken);
+      });
+    } catch (e) {
+      dev.log('[FCM] Setup error: $e');
+    }
+  }
+
   Future<void> setLanguage(String lang) async {
     _language = lang;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('language', lang);
     notifyListeners();
   }
-
-  String? _devOtpCode;
-  String? get devOtpCode => _devOtpCode;
 
   Future<void> sendOtp(String phone) async {
     _loading = true;
@@ -55,7 +82,7 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> verifyOtp({
     required String phone,
     required String code,
-    String role = 'renter',
+    String role = 'user',
   }) async {
     _loading = true;
     notifyListeners();
@@ -72,6 +99,7 @@ class AuthProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', _token!);
 
+      _setupFcm();
       notifyListeners();
       return result['is_new'] ?? false;
     } finally {

@@ -5,8 +5,8 @@ import "time"
 type Role string
 
 const (
-	RoleRenter   Role = "renter"
-	RoleLandlord Role = "landlord"
+	RoleUser  Role = "user"
+	RoleAdmin Role = "admin"
 )
 
 type Language string
@@ -24,6 +24,7 @@ type User struct {
 	Language  Language  `json:"language"`
 	FullName  string    `json:"full_name,omitempty"`
 	AvatarURL string    `json:"avatar_url,omitempty"`
+	FcmToken  string    `json:"fcm_token,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

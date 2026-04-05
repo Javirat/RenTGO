@@ -60,3 +60,15 @@ func (r *UserRepository) Update(ctx context.Context, u *models.User) error {
 		u.FullName, u.AvatarURL, u.Language, u.Role, u.ID)
 	return err
 }
+
+func (r *UserRepository) SaveFcmToken(ctx context.Context, userID, fcmToken string) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE users SET fcm_token=$1, updated_at=NOW() WHERE id=$2`, fcmToken, userID)
+	return err
+}
+
+func (r *UserRepository) GetFcmToken(ctx context.Context, userID string) (string, error) {
+	var token string
+	err := r.db.QueryRow(ctx, `SELECT COALESCE(fcm_token,'') FROM users WHERE id=$1`, userID).Scan(&token)
+	return token, err
+}

@@ -26,6 +26,7 @@ type CreatePropertyRequest struct {
 	Title       string  `json:"title" binding:"required"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price" binding:"required"`
+	Currency    string  `json:"currency"`
 	Rooms       int     `json:"rooms"`
 	Capacity    int     `json:"capacity"`
 	Region      string  `json:"region"`
@@ -34,12 +35,34 @@ type CreatePropertyRequest struct {
 	Lng         float64 `json:"lng"`
 	Category    string  `json:"category" binding:"required"`
 	HasCCTV     bool    `json:"has_cctv"`
+	// House
+	Floor       int    `json:"floor"`
+	TotalFloors int    `json:"total_floors"`
+	Furnished   bool   `json:"furnished"`
+	Renovation  string `json:"renovation"`
+	Balcony     bool   `json:"balcony"`
+	Parking     bool   `json:"parking"`
+	Wifi        bool   `json:"wifi"`
+	Washer      bool   `json:"washer"`
+	Conditioner bool   `json:"conditioner"`
+	Fridge      bool   `json:"fridge"`
+	TV          bool   `json:"tv"`
+	// Car
+	CarBrand        string `json:"car_brand"`
+	CarYear         int    `json:"car_year"`
+	CarTransmission string `json:"car_transmission"`
+	CarFuel         string `json:"car_fuel"`
+	CarMileage      int    `json:"car_mileage"`
+	CarColor        string `json:"car_color"`
+	CarAC           bool   `json:"car_ac"`
+	CarSeats        int    `json:"car_seats"`
 }
 
 type UpdatePropertyRequest struct {
 	Title       string  `json:"title"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
+	Currency    string  `json:"currency"`
 	Rooms       int     `json:"rooms"`
 	Capacity    int     `json:"capacity"`
 	Region      string  `json:"region"`
@@ -49,6 +72,27 @@ type UpdatePropertyRequest struct {
 	Category    string  `json:"category"`
 	HasCCTV     bool    `json:"has_cctv"`
 	IsActive    bool    `json:"is_active"`
+	// House
+	Floor       int    `json:"floor"`
+	TotalFloors int    `json:"total_floors"`
+	Furnished   bool   `json:"furnished"`
+	Renovation  string `json:"renovation"`
+	Balcony     bool   `json:"balcony"`
+	Parking     bool   `json:"parking"`
+	Wifi        bool   `json:"wifi"`
+	Washer      bool   `json:"washer"`
+	Conditioner bool   `json:"conditioner"`
+	Fridge      bool   `json:"fridge"`
+	TV          bool   `json:"tv"`
+	// Car
+	CarBrand        string `json:"car_brand"`
+	CarYear         int    `json:"car_year"`
+	CarTransmission string `json:"car_transmission"`
+	CarFuel         string `json:"car_fuel"`
+	CarMileage      int    `json:"car_mileage"`
+	CarColor        string `json:"car_color"`
+	CarAC           bool   `json:"car_ac"`
+	CarSeats        int    `json:"car_seats"`
 }
 
 // CreateProperty godoc
@@ -62,11 +106,6 @@ type UpdatePropertyRequest struct {
 // @Router /properties [post]
 func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 	ownerID := c.GetString("user_id")
-	role := c.GetString("user_role")
-	if role != "landlord" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "only landlords can create listings"})
-		return
-	}
 
 	var req CreatePropertyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -75,19 +114,39 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 	}
 
 	p := &models.Property{
-		OwnerID:     ownerID,
-		Title:       req.Title,
-		Description: req.Description,
-		Price:       req.Price,
-		Rooms:       req.Rooms,
-		Capacity:    req.Capacity,
-		Region:      req.Region,
-		Address:     req.Address,
-		Lat:         req.Lat,
-		Lng:         req.Lng,
-		Category:    models.Category(req.Category),
-		HasCCTV:     req.HasCCTV,
-		IsActive:    true,
+		OwnerID:         ownerID,
+		Title:           req.Title,
+		Description:     req.Description,
+		Price:           req.Price,
+		Currency:        req.Currency,
+		Rooms:           req.Rooms,
+		Capacity:        req.Capacity,
+		Region:          req.Region,
+		Address:         req.Address,
+		Lat:             req.Lat,
+		Lng:             req.Lng,
+		Category:        models.Category(req.Category),
+		HasCCTV:         req.HasCCTV,
+		Floor:           req.Floor,
+		TotalFloors:     req.TotalFloors,
+		Furnished:       req.Furnished,
+		Renovation:      req.Renovation,
+		Balcony:         req.Balcony,
+		Parking:         req.Parking,
+		Wifi:            req.Wifi,
+		Washer:          req.Washer,
+		Conditioner:     req.Conditioner,
+		Fridge:          req.Fridge,
+		TV:              req.TV,
+		CarBrand:        req.CarBrand,
+		CarYear:         req.CarYear,
+		CarTransmission: req.CarTransmission,
+		CarFuel:         req.CarFuel,
+		CarMileage:      req.CarMileage,
+		CarColor:        req.CarColor,
+		CarAC:           req.CarAC,
+		CarSeats:        req.CarSeats,
+		IsActive:        true,
 	}
 
 	if err := h.propertySvc.Create(c.Request.Context(), p); err != nil {
@@ -130,8 +189,10 @@ func (h *PropertyHandler) GetProperty(c *gin.Context) {
 // @Router /properties [get]
 func (h *PropertyHandler) ListProperties(c *gin.Context) {
 	f := models.PropertyFilter{
+		Search:   c.Query("search"),
 		Category: c.Query("category"),
 		Region:   c.Query("region"),
+		OwnerID:  c.GetString("user_id"), // from JWT if authenticated
 	}
 
 	if v := c.Query("min_price"); v != "" {
@@ -180,20 +241,40 @@ func (h *PropertyHandler) UpdateProperty(c *gin.Context) {
 	}
 
 	p := &models.Property{
-		ID:          id,
-		OwnerID:     ownerID,
-		Title:       req.Title,
-		Description: req.Description,
-		Price:       req.Price,
-		Rooms:       req.Rooms,
-		Capacity:    req.Capacity,
-		Region:      req.Region,
-		Address:     req.Address,
-		Lat:         req.Lat,
-		Lng:         req.Lng,
-		Category:    models.Category(req.Category),
-		HasCCTV:     req.HasCCTV,
-		IsActive:    req.IsActive,
+		ID:              id,
+		OwnerID:         ownerID,
+		Title:           req.Title,
+		Description:     req.Description,
+		Price:           req.Price,
+		Currency:        req.Currency,
+		Rooms:           req.Rooms,
+		Capacity:        req.Capacity,
+		Region:          req.Region,
+		Address:         req.Address,
+		Lat:             req.Lat,
+		Lng:             req.Lng,
+		Category:        models.Category(req.Category),
+		HasCCTV:         req.HasCCTV,
+		IsActive:        req.IsActive,
+		Floor:           req.Floor,
+		TotalFloors:     req.TotalFloors,
+		Furnished:       req.Furnished,
+		Renovation:      req.Renovation,
+		Balcony:         req.Balcony,
+		Parking:         req.Parking,
+		Wifi:            req.Wifi,
+		Washer:          req.Washer,
+		Conditioner:     req.Conditioner,
+		Fridge:          req.Fridge,
+		TV:              req.TV,
+		CarBrand:        req.CarBrand,
+		CarYear:         req.CarYear,
+		CarTransmission: req.CarTransmission,
+		CarFuel:         req.CarFuel,
+		CarMileage:      req.CarMileage,
+		CarColor:        req.CarColor,
+		CarAC:           req.CarAC,
+		CarSeats:        req.CarSeats,
 	}
 
 	if err := h.propertySvc.Update(c.Request.Context(), p); err != nil {

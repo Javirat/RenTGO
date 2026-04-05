@@ -23,7 +23,7 @@ class User {
     return User(
       id: json['id'] ?? '',
       phone: json['phone'] ?? '',
-      role: json['role'] ?? 'renter',
+      role: json['role'] ?? 'user',
       language: json['language'] ?? 'uz',
       fullName: json['full_name'] ?? '',
       avatarUrl: json['avatar_url'] ?? '',
@@ -32,5 +32,5 @@ class User {
     );
   }
 
-  bool get isLandlord => role == 'landlord';
+  bool get isAdmin => role == 'admin';
 }

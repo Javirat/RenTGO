@@ -47,6 +47,22 @@ func RoleMiddleware(roles ...models.Role) gin.HandlerFunc {
 	}
 }
 
+// OptionalJWTMiddleware extracts user_id from token if present, but doesn't block.
+func OptionalJWTMiddleware(jwtSvc *service.JWTService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.GetHeader("Authorization")
+		if header != "" && strings.HasPrefix(header, "Bearer ") {
+			tokenStr := strings.TrimPrefix(header, "Bearer ")
+			if claims, err := jwtSvc.ValidateToken(tokenStr); err == nil {
+				c.Set("user_id", claims.UserID)
+				c.Set("user_role", string(claims.Role))
+				c.Set("user_phone", claims.Phone)
+			}
+		}
+		c.Next()
+	}
+}
+
 // LanguageMiddleware detects the Accept-Language header and sets it in context.
 func LanguageMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

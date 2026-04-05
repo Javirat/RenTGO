@@ -40,13 +40,24 @@ class ApiClient {
   Future<Map<String, dynamic>> verifyOtp({
     required String phone,
     required String code,
-    String role = 'renter',
+    String role = 'user',
     String language = 'uz',
   }) async {
     final res = await _dio.post('/auth/verify-otp', data: {
       'phone': phone,
       'code': code,
       'role': role,
+      'language': language,
+    });
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> firebaseLogin({
+    required String firebaseToken,
+    String language = 'uz',
+  }) async {
+    final res = await _dio.post('/auth/firebase-login', data: {
+      'firebase_token': firebaseToken,
       'language': language,
     });
     return res.data;
@@ -70,14 +81,22 @@ class ApiClient {
     return res.data['token'];
   }
 
+  // ── FCM ──
+
+  Future<void> registerFcmToken(String fcmToken) async {
+    await _dio.post('/auth/fcm-token', data: {'fcm_token': fcmToken});
+  }
+
   // ── Properties ──
 
   Future<Map<String, dynamic>> listProperties({
+    String? search,
     String? category,
     String? region,
     double? minPrice,
     double? maxPrice,
     int? rooms,
+    String? ownerId,
     int page = 1,
     int pageSize = 20,
   }) async {
@@ -85,11 +104,13 @@ class ApiClient {
       'page': page,
       'page_size': pageSize,
     };
+    if (search != null && search.isNotEmpty) params['search'] = search;
     if (category != null) params['category'] = category;
     if (region != null) params['region'] = region;
     if (minPrice != null) params['min_price'] = minPrice;
     if (maxPrice != null) params['max_price'] = maxPrice;
     if (rooms != null) params['rooms'] = rooms;
+    if (ownerId != null) params['owner_id'] = ownerId;
 
     final res = await _dio.get('/properties', queryParameters: params);
     return res.data;
@@ -158,5 +179,78 @@ class ApiClient {
       'page': page,
     });
     return res.data as List<dynamic>;
+  }
+
+  // ── Admin ──
+
+  Future<Map<String, dynamic>> adminDashboard() async {
+    final res = await _dio.get('/admin/dashboard');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> adminListUsers({String? search, String? role, int page = 1}) async {
+    final params = <String, dynamic>{'page': page};
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (role != null && role.isNotEmpty) params['role'] = role;
+    final res = await _dio.get('/admin/users', queryParameters: params);
+    return res.data;
+  }
+
+  Future<void> adminUpdateUserRole(String userId, String role) async {
+    await _dio.put('/admin/users/$userId/role', data: {'role': role});
+  }
+
+  Future<void> adminDeleteUser(String userId) async {
+    await _dio.delete('/admin/users/$userId');
+  }
+
+  Future<Map<String, dynamic>> adminListProperties({String? search, String? category, String? status, bool? isActive, int page = 1}) async {
+    final params = <String, dynamic>{'page': page};
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (category != null && category.isNotEmpty) params['category'] = category;
+    if (status != null && status.isNotEmpty) params['status'] = status;
+    if (isActive != null) params['is_active'] = isActive.toString();
+    final res = await _dio.get('/admin/properties', queryParameters: params);
+    return res.data;
+  }
+
+  Future<void> adminToggleProperty(String propertyId, bool isActive) async {
+    await _dio.put('/admin/properties/$propertyId/active', data: {'is_active': isActive});
+  }
+
+  Future<void> adminDeleteProperty(String propertyId) async {
+    await _dio.delete('/admin/properties/$propertyId');
+  }
+
+  Future<void> adminUpdatePropertyStatus(String propertyId, String status) async {
+    await _dio.put('/admin/properties/$propertyId/status', data: {'status': status});
+  }
+
+  Future<List<dynamic>> adminListConversations() async {
+    final res = await _dio.get('/admin/conversations');
+    return res.data as List<dynamic>;
+  }
+
+  Future<List<dynamic>> adminGetMessages(String conversationId) async {
+    final res = await _dio.get('/admin/conversations/$conversationId/messages');
+    return res.data as List<dynamic>;
+  }
+
+  // Directories
+  Future<List<dynamic>> getDirectories(String type) async {
+    final res = await _dio.get('/directories', queryParameters: {'type': type});
+    return res.data as List<dynamic>;
+  }
+
+  Future<void> adminCreateDirectory(Map<String, dynamic> data) async {
+    await _dio.post('/admin/directories', data: data);
+  }
+
+  Future<void> adminUpdateDirectory(String id, Map<String, dynamic> data) async {
+    await _dio.put('/admin/directories/$id', data: data);
+  }
+
+  Future<void> adminDeleteDirectory(String id) async {
+    await _dio.delete('/admin/directories/$id');
   }
 }

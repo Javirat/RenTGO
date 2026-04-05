@@ -11,6 +11,11 @@ import (
 	"github.com/MuhammadYahyo/RenTGO/internal/models"
 )
 
+type FirebaseLoginRequest struct {
+	FirebaseToken string `json:"firebase_token" binding:"required"`
+	Language      string `json:"language"`
+}
+
 var phoneRegex = regexp.MustCompile(`^\+998\d{9}$`)
 
 type AuthHandler struct {
@@ -93,10 +98,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	role := models.RoleRenter
-	if req.Role == "landlord" {
-		role = models.RoleLandlord
-	}
+	role := models.RoleUser
 	lang := models.LangUzbek
 	switch req.Language {
 	case "ru":
@@ -116,6 +118,52 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		"user":   user,
 		"is_new": isNew,
 	})
+}
+
+// FirebaseLogin verifies a Firebase ID token and creates/logs in the user
+func (h *AuthHandler) FirebaseLogin(c *gin.Context) {
+	var req FirebaseLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "firebase_token is required"})
+		return
+	}
+
+	lang := models.LangUzbek
+	switch req.Language {
+	case "ru":
+		lang = models.LangRussian
+	case "en":
+		lang = models.LangEnglish
+	}
+
+	token, user, isNew, err := h.authSvc.FirebaseLogin(c.Request.Context(), req.FirebaseToken, lang)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":  token,
+		"user":   user,
+		"is_new": isNew,
+	})
+}
+
+// RegisterFcmToken saves the user's FCM push notification token
+func (h *AuthHandler) RegisterFcmToken(c *gin.Context) {
+	userID := c.GetString("user_id")
+	var req struct {
+		FcmToken string `json:"fcm_token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "fcm_token is required"})
+		return
+	}
+	if err := h.authSvc.SaveFcmToken(c.Request.Context(), userID, req.FcmToken); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save token"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "token saved"})
 }
 
 // GetProfile godoc
@@ -168,7 +216,13 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 		user.Language = models.Language(req.Language)
 	}
 	if req.Role != "" {
-		user.Role = models.Role(req.Role)
+		// Only admins can change roles, and only to valid values
+		requestingUserID := c.GetString("user_id")
+		requestingUser, _ := h.authSvc.GetProfile(c.Request.Context(), requestingUserID)
+		newRole := models.Role(req.Role)
+		if requestingUser != nil && requestingUser.Role == models.RoleAdmin && (newRole == models.RoleUser || newRole == models.RoleAdmin) {
+			user.Role = newRole
+		}
 	}
 
 	if err := h.authSvc.UpdateProfile(c.Request.Context(), user); err != nil {

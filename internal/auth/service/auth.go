@@ -17,10 +17,11 @@ type AuthService struct {
 	jwt      *JWTService
 	sms      *SMSService
 	telegram *TelegramService
+	firebase *FirebaseVerifier
 }
 
-func NewAuthService(repo *repository.UserRepository, otp *OTPService, jwt *JWTService, sms *SMSService, tg *TelegramService) *AuthService {
-	return &AuthService{userRepo: repo, otp: otp, jwt: jwt, sms: sms, telegram: tg}
+func NewAuthService(repo *repository.UserRepository, otp *OTPService, jwt *JWTService, sms *SMSService, tg *TelegramService, fb *FirebaseVerifier) *AuthService {
+	return &AuthService{userRepo: repo, otp: otp, jwt: jwt, sms: sms, telegram: tg, firebase: fb}
 }
 
 func (s *AuthService) SendOTP(ctx context.Context, phone string) (string, error) {
@@ -92,12 +93,48 @@ func (s *AuthService) VerifyOTP(ctx context.Context, phone, code string, role mo
 	return token, user, isNew, nil
 }
 
+func (s *AuthService) FirebaseLogin(ctx context.Context, firebaseToken string, lang models.Language) (string, *models.User, bool, error) {
+	if s.firebase == nil {
+		return "", nil, false, fmt.Errorf("Firebase authentication not configured")
+	}
+
+	phone, err := s.firebase.VerifyIDToken(firebaseToken)
+	if err != nil {
+		return "", nil, false, fmt.Errorf("invalid Firebase token: %w", err)
+	}
+
+	isNew := false
+	user, err := s.userRepo.FindByPhone(ctx, phone)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			user, err = s.userRepo.Create(ctx, phone, models.RoleUser, lang)
+			if err != nil {
+				return "", nil, false, fmt.Errorf("create user: %w", err)
+			}
+			isNew = true
+		} else {
+			return "", nil, false, err
+		}
+	}
+
+	token, err := s.jwt.GenerateToken(user)
+	if err != nil {
+		return "", nil, false, fmt.Errorf("generate token: %w", err)
+	}
+
+	return token, user, isNew, nil
+}
+
 func (s *AuthService) GetProfile(ctx context.Context, userID string) (*models.User, error) {
 	return s.userRepo.FindByID(ctx, userID)
 }
 
 func (s *AuthService) UpdateProfile(ctx context.Context, user *models.User) error {
 	return s.userRepo.Update(ctx, user)
+}
+
+func (s *AuthService) SaveFcmToken(ctx context.Context, userID, fcmToken string) error {
+	return s.userRepo.SaveFcmToken(ctx, userID, fcmToken)
 }
 
 func (s *AuthService) GenerateToken(user *models.User) (string, error) {
